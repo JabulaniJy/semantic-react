@@ -1,0 +1,49 @@
+name: Release Workflow
+
+on:
+  push:
+    tags:
+      - 'v*' # Trigger the workflow when a new tag is pushed matching the pattern 'v*'
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+
+    steps:
+
+      # Add your release steps and actions here
+      # For example, building, testing, creating release assets, etc.
+
+      - name: Checkout repository
+        uses: actions/checkout@v2
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v2
+        with:
+          node-version: '14'
+
+      - name: Build and test
+        run: |
+          npm install
+          npm run build
+      - name: Generate documentation
+        run: npm run generate-docs
+        
+      - name: Create release
+        id: create_release
+        uses: actions/create-release@v1
+        with:
+          tag_name: ${{ github.ref }}
+          release_name: Release ${{ github.ref }}
+          body: |
+            Release ${{ github.ref }} is now available!
+          draft: false
+          prerelease: false
+
+      - name: Upload release asset
+        uses: actions/upload-release-asset@v1
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./dist/my-app.zip
+          asset_name: my-app.zip
+          asset_content_type: application/zip

@@ -22,10 +22,8 @@ jobs:
         with:
           node-version: '14'
 
-      - name: Build and test
-        run: |
-          npm install
-          npm run build
+      - name: Generate documentation
+        run: npm run generate-docs
         
       - name: Create release
         id: create_release

@@ -1,0 +1,48 @@
+name: Create Tag on Merge
+
+on:
+  push:
+    branches:
+      - develop
+
+jobs:
+  create_tag:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Get latest release tag
+        id: latest_release
+        run: |
+          releases=$(curl -s -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+          https://api.github.com/repos/${{ github.repository }}/releases)
+          latest_tag=$(echo "$releases" | jq -r '.[0].tag_name')
+          echo "LATEST_TAG=$latest_tag" >> $GITHUB_ENV
+
+      - name: Determine tag version
+        id: tag_version
+        run: |
+          prefix="${{ steps.branch_name.outputs.BRANCH_NAME }}"
+          latest_tag="${{ env.LATEST_TAG }}"
+          IFS='.' read -ra tag_parts <<< "$latest_tag"
+          major="${tag_parts[0]}"
+          minor="${tag_parts[1]}"
+          patch="${tag_parts[2]}"
+          case "$prefix" in
+            release) tag_version="$((major+1)).0.0" ;;
+            feature) tag_version="$major.$((minor+1)).0" ;;
+            bugfix) tag_version="$major.$minor.$((patch+1))" ;;
+            *) tag_version=skip ;;
+          esac
+          echo "TAG_VERSION=$tag_version" >> $GITHUB_ENV
+
+      - name: Create tag
+        id: create_tag
+        if: steps.tag_version.outputs.tag_version != 'skip'
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git tag ${{ steps.tag_version.outputs.tag_version }}
+          git push origin ${{ steps.tag_version.outputs.tag_version }}
